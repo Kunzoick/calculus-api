@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculus Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+          --bg:        #080c14;
+          --surface:   #0d1220;
+          --border:    rgba(255,255,255,0.07);
+          --border-hi: rgba(99,179,237,0.35);
+          --text:      #c8d3e8;
+          --text-dim:  #4a566e;
+          --text-hi:   #e8eef8;
+          --accent:    #63b3ed;
+          --accent-2:  #9f7aea;
+          --glow:      rgba(99,179,237,0.12);
+          --glow-2:    rgba(159,122,234,0.08);
+          --success:   #68d391;
+          --error:     #fc8181;
+          --radius:    14px;
+          --transition: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+          font-family: 'DM Sans', sans-serif;
+          background: var(--bg);
+          color: var(--text);
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 3rem 1.25rem 4rem;
+          overflow-x: hidden;
+        }
+
+        /* Background atmosphere */
+        body::before {
+          content: '';
+          position: fixed;
+          top: -30vh;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 70vw;
+          height: 60vh;
+          background: radial-gradient(ellipse, rgba(99,179,237,0.06) 0%, rgba(159,122,234,0.04) 50%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        body::after {
+          content: '';
+          position: fixed;
+          bottom: -10vh;
+          right: -10vw;
+          width: 40vw;
+          height: 40vh;
+          background: radial-gradient(ellipse, rgba(159,122,234,0.05) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        /* ── Header ── */
+        .header {
+          text-align: center;
+          margin-bottom: 2.5rem;
+          position: relative;
+          z-index: 1;
+          animation: fadeDown 0.6s ease both;
+        }
+
+        .header-eyebrow {
+          font-size: 0.7rem;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--accent);
+          margin-bottom: 0.75rem;
+          opacity: 0.85;
+        }
+
+        .header h1 {
+          font-size: clamp(1.8rem, 4vw, 2.6rem);
+          font-weight: 300;
+          color: var(--text-hi);
+          letter-spacing: -0.03em;
+          line-height: 1.15;
+        }
+
+        .header h1 strong {
+          font-weight: 600;
+          background: linear-gradient(135deg, var(--accent), var(--accent-2));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .header-sub {
+          margin-top: 0.6rem;
+          font-size: 0.9rem;
+          color: var(--text-dim);
+          font-weight: 400;
+        }
+
+        /* ── Main Card ── */
+        .card {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 560px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 1.75rem;
+          box-shadow:
+            0 1px 2px rgba(0,0,0,0.4),
+            0 8px 32px rgba(0,0,0,0.3),
+            0 0 0 0.5px rgba(255,255,255,0.03) inset;
+          animation: fadeUp 0.6s 0.1s ease both;
+          transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .card:focus-within {
+          border-color: rgba(99,179,237,0.2);
+          box-shadow:
+            0 1px 2px rgba(0,0,0,0.4),
+            0 8px 40px rgba(0,0,0,0.35),
+            0 0 40px var(--glow),
+            0 0 0 0.5px rgba(255,255,255,0.03) inset;
+        }
+
+        /* ── Operation Tabs ── */
+        .tabs {
+          display: flex;
+          gap: 0.35rem;
+          background: rgba(0,0,0,0.25);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 0.3rem;
+          margin-bottom: 1.5rem;
+          flex-wrap: wrap;
+        }
+
+        .tab {
+          flex: 1;
+          min-width: fit-content;
+          padding: 0.45rem 0.6rem;
+          border: none;
+          border-radius: 7px;
+          background: transparent;
+          color: var(--text-dim);
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.78rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all var(--transition);
+          white-space: nowrap;
+          text-align: center;
+          position: relative;
+        }
+
+        .tab:hover {
+          color: var(--text);
+          background: rgba(255,255,255,0.04);
+        }
+
+        .tab.active {
+          background: var(--surface);
+          color: var(--text-hi);
+          box-shadow:
+            0 1px 3px rgba(0,0,0,0.3),
+            0 0 0 1px rgba(255,255,255,0.06) inset;
+        }
+
+        .tab.active::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 16px;
+          height: 2px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        }
+
+        /* Tab math symbol */
+        .tab-sym {
+          display: inline-block;
+          font-family: 'DM Mono', monospace;
+          font-size: 0.8rem;
+          margin-right: 0.3rem;
+          opacity: 0.7;
+        }
+
+        /* ── Label ── */
+        .field-label {
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--text-dim);
+          margin-bottom: 0.45rem;
+        }
+
+        /* ── Input ── */
+        .input-wrap {
+          position: relative;
+          margin-bottom: 1rem;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+          width: 100%;
+          padding: 0.7rem 1rem;
+          background: rgba(0,0,0,0.3);
+          border: 1px solid var(--border);
+          border-radius: 9px;
+          color: var(--text-hi);
+          font-family: 'DM Mono', monospace;
+          font-size: 0.9rem;
+          outline: none;
+          transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+          -moz-appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+        input::placeholder { color: var(--text-dim); font-family: 'DM Mono', monospace; }
+
+        input:focus {
+          border-color: var(--border-hi);
+          background: rgba(99,179,237,0.03);
+          box-shadow: 0 0 0 3px rgba(99,179,237,0.08);
+        }
+
+        /* ── Conditional fields ── */
+        .extra-fields {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.75rem;
+          overflow: hidden;
+          max-height: 0;
+          opacity: 0;
+          transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease, margin 0.3s ease;
+          margin-bottom: 0;
+        }
+
+        .extra-fields.visible {
+          max-height: 120px;
+          opacity: 1;
+          margin-bottom: 1rem;
+        }
+
+        .extra-fields.single {
+          grid-template-columns: 1fr;
+        }
+
+        /* ── Calculate Button ── */
+        .btn-calc {
+          width: 100%;
+          padding: 0.8rem;
+          border: none;
+          border-radius: 9px;
+          background: linear-gradient(135deg, rgba(99,179,237,0.15), rgba(159,122,234,0.12));
+          border: 1px solid rgba(99,179,237,0.2);
+          color: var(--text-hi);
+          font-family: 'DM Sans', sans-serif;
+          font-size: 0.92rem;
+          font-weight: 500;
+          cursor: pointer;
+          letter-spacing: 0.02em;
+          transition: all var(--transition);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .btn-calc::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(99,179,237,0.08), rgba(159,122,234,0.06));
+          opacity: 0;
+          transition: opacity var(--transition);
+        }
+
+        .btn-calc:hover:not(:disabled) {
+          border-color: rgba(99,179,237,0.4);
+          box-shadow: 0 0 24px rgba(99,179,237,0.15), 0 4px 12px rgba(0,0,0,0.2);
+          transform: translateY(-1px);
+        }
+
+        .btn-calc:hover:not(:disabled)::before { opacity: 1; }
+
+        .btn-calc:active:not(:disabled) {
+          transform: translateY(0);
+          box-shadow: none;
+        }
+
+        .btn-calc:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* Loading dots */
+        .btn-calc.loading .btn-text { opacity: 0; }
+        .btn-calc.loading::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(99,179,237,0.3);
+          border-top-color: var(--accent);
+          border-radius: 50%;
+          animation: spin 0.7s linear infinite;
+        }
+
+        /* ── Divider ── */
+        .divider {
+          height: 1px;
+          background: var(--border);
+          margin: 1.25rem 0;
+        }
+
+        /* ── Result Area ── */
+        .result-label {
+          font-size: 0.72rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--text-dim);
+          margin-bottom: 0.45rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .result-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--text-dim);
+          transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .result-dot.success {
+          background: var(--success);
+          box-shadow: 0 0 8px rgba(104,211,145,0.5);
+        }
+
+        .result-dot.error {
+          background: var(--error);
+          box-shadow: 0 0 8px rgba(252,129,129,0.5);
+        }
+
+        .result-box {
+          background: rgba(0,0,0,0.25);
+          border: 1px solid var(--border);
+          border-radius: 9px;
+          padding: 0.85rem 1rem;
+          min-height: 52px;
+          display: flex;
+          align-items: center;
+          transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+          overflow: hidden;
+        }
+
+        .result-box.success {
+          border-color: rgba(104,211,145,0.2);
+          background: rgba(104,211,145,0.03);
+          box-shadow: 0 0 20px rgba(104,211,145,0.06);
+        }
+
+        .result-box.error {
+          border-color: rgba(252,129,129,0.2);
+          background: rgba(252,129,129,0.03);
+          box-shadow: 0 0 20px rgba(252,129,129,0.06);
+        }
+
+        .result-text {
+          font-family: 'DM Mono', monospace;
+          font-size: 0.9rem;
+          color: var(--text-dim);
+          font-style: italic;
+          transition: color 0.3s ease;
+          word-break: break-all;
+        }
+
+        .result-text.success { color: var(--success); font-style: normal; }
+        .result-text.error   { color: var(--error);   font-style: normal; }
+
+        /* Result appear animation */
+        @keyframes resultAppear {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-text.animate { animation: resultAppear 0.3s ease both; }
+
+        /* ── Footer ── */
+        .footer {
+          margin-top: 2rem;
+          font-size: 0.78rem;
+          color: var(--text-dim);
+          text-align: center;
+          position: relative;
+          z-index: 1;
+          animation: fadeUp 0.6s 0.2s ease both;
+        }
+
+        .footer a {
+          color: var(--accent);
+          text-decoration: none;
+          opacity: 0.7;
+          transition: opacity 0.2s;
+        }
+
+        .footer a:hover { opacity: 1; }
+
+        /* ── Animations ── */
+        @keyframes fadeDown {
+          from { opacity: 0; transform: translateY(-12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+          .card { padding: 1.25rem; }
+          .tabs { gap: 0.2rem; padding: 0.25rem; }
+          .tab  { padding: 0.4rem 0.5rem; font-size: 0.72rem; }
+          .tab-sym { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-eyebrow">∂ · ∫ · d/dx</div>
+    <h1>Differential &amp; <strong>Integral</strong> Calculator</h1>
+    <p class="header-sub">Derivatives, integrals, and more</p>
+</div>
+
+<div class="card">
+
+    <!-- Operation Tabs -->
+    <div class="tabs" role="tablist">
+        <button class="tab active" data-op="differentiate" role="tab">
+            <span class="tab-sym">d/dx</span>Differentiate
+        </button>
+        <button class="tab" data-op="nth" role="tab">
+            <span class="tab-sym">dⁿ</span>Nth Order
+        </button>
+        <button class="tab" data-op="integrate" role="tab">
+            <span class="tab-sym">∫</span>Integrate
+        </button>
+        <button class="tab" data-op="definite" role="tab">
+            <span class="tab-sym">∫ₐᵇ</span>Definite
+        </button>
+        <button class="tab" data-op="implicit" role="tab">
+            <span class="tab-sym">∂</span>Implicit
+        </button>
+    </div>
+
+    <!-- Expression Input -->
+    <div class="input-wrap">
+        <div class="field-label" id="expr-label">Expression</div>
+        <input
+                type="text"
+                id="expr-input"
+                placeholder="e.g. x^3 + 2x"
+                autocomplete="off"
+                spellcheck="false"
+        />
+    </div>
+
+    <!-- Conditional: Bounds (definite integral only) -->
+    <div class="extra-fields" id="bounds-fields">
+        <div>
+            <div class="field-label">Lower bound (a)</div>
+            <input type="number" id="lower-bound" placeholder="0" step="any" />
+        </div>
+        <div>
+            <div class="field-label">Upper bound (b)</div>
+            <input type="number" id="upper-bound" placeholder="1" step="any" />
+        </div>
+    </div>
+
+    <!-- Conditional: Order (nth derivative only) -->
+    <div class="extra-fields single" id="order-field">
+        <div>
+            <div class="field-label">Derivative order (n)</div>
+            <input type="number" id="order-input" placeholder="2" min="1" max="10" />
+        </div>
+    </div>
+
+    <!-- Calculate -->
+    <button class="btn-calc" id="calc-btn">
+        <span class="btn-text">Calculate</span>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Result -->
+    <div class="result-label">
+        <span class="result-dot" id="result-dot"></span>
+        Result
+    </div>
+    <div class="result-box" id="result-box">
+        <span class="result-text" id="result-text">Result will appear here…</span>
+    </div>
+
+</div>
+
+<div class="footer">
+    Hand-coded symbolic engine &nbsp;·&nbsp;
+    <a href="https://github.com/Kunzoick" target="_blank" rel="noopener">Kunzoick</a>
+</div>
+
+<script>
+    const BASE_URL = window.location.origin + '/api/v1/calc';
+
+    const tabs       = document.querySelectorAll('.tab');
+    const exprInput  = document.getElementById('expr-input');
+    const exprLabel  = document.getElementById('expr-label');
+    const lowerBound = document.getElementById('lower-bound');
+    const upperBound = document.getElementById('upper-bound');
+    const orderInput = document.getElementById('order-input');
+    const boundsEl   = document.getElementById('bounds-fields');
+    const orderEl    = document.getElementById('order-field');
+    const calcBtn    = document.getElementById('calc-btn');
+    const resultBox  = document.getElementById('result-box');
+    const resultText = document.getElementById('result-text');
+    const resultDot  = document.getElementById('result-dot');
+
+    let currentOp = 'differentiate';
+
+    // ── Tab switching ──
+    const opConfig = {
+      differentiate: { label: 'Expression',        placeholder: 'e.g. x^3 + 2x' },
+      nth:           { label: 'Expression',        placeholder: 'e.g. sin(x)' },
+      integrate:     { label: 'Expression',        placeholder: 'e.g. 3x^2 + 1' },
+      definite:      { label: 'Expression',        placeholder: 'e.g. x^2' },
+      implicit:      { label: 'Equation',          placeholder: 'e.g. x^2 + y^2 = 1' },
+    };
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentOp = tab.dataset.op;
+
+        const cfg = opConfig[currentOp];
+        exprLabel.textContent     = cfg.label;
+        exprInput.placeholder     = cfg.placeholder;
+        exprInput.value           = '';
+
+        boundsEl.classList.toggle('visible', currentOp === 'definite');
+        orderEl.classList.toggle('visible',  currentOp === 'nth');
+
+        resetResult();
+        exprInput.focus();
+      });
+    });
+
+    // ── Reset result ──
+    function resetResult() {
+      resultBox.className  = 'result-box';
+      resultDot.className  = 'result-dot';
+      resultText.className = 'result-text';
+      resultText.textContent = 'Result will appear here…';
+    }
+
+    // ── Show result ──
+    function showResult(text, isError) {
+      const state = isError ? 'error' : 'success';
+      resultBox.className  = `result-box ${state}`;
+      resultDot.className  = `result-dot ${state}`;
+      resultText.className = `result-text ${state} animate`;
+      resultText.textContent = text;
+
+      // re-trigger animation
+      resultText.addEventListener('animationend', () => {
+        resultText.classList.remove('animate');
+      }, { once: true });
+    }
+
+    // ── Calculate ──
+    calcBtn.addEventListener('click', calculate);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') calculate();
+    });
+
+    async function calculate() {
+      const expr = exprInput.value.trim();
+      if (!expr) {
+        showResult('Please enter an expression.', true);
+        return;
+      }
+
+      // Build request
+      let endpoint = '';
+      let body = {};
+
+      switch (currentOp) {
+        case 'differentiate':
+          endpoint = '/differentiate';
+          body = { expression: expr };
+          break;
+        case 'nth':
+          const order = parseInt(orderInput.value) || 2;
+          endpoint = '/differentiate/nth';
+          body = { expression: expr, order };
+          break;
+        case 'integrate':
+          endpoint = '/integrate';
+          body = { expression: expr };
+          break;
+        case 'definite':
+          const a = parseFloat(lowerBound.value);
+          const b = parseFloat(upperBound.value);
+          if (isNaN(a) || isNaN(b)) {
+            showResult('Please enter valid bounds.', true);
+            return;
+          }
+          endpoint = '/integrate/definite';
+          body = { expression: expr, lowerBound: a, upperBound: b };
+          break;
+        case 'implicit':
+          endpoint = '/differentiate/implicit';
+          body = { equation: expr };
+          break;
+      }
+
+      // Loading state
+      calcBtn.classList.add('loading');
+      calcBtn.disabled = true;
+
+      try {
+        const res = await fetch(BASE_URL + endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          showResult(data.result, false);
+        } else {
+          showResult(data.error || 'Could not evaluate expression.', true);
+        }
+      } catch (err) {
+        showResult('Could not reach the server. Is it running?', true);
+      } finally {
+        calcBtn.classList.remove('loading');
+        calcBtn.disabled = false;
+      }
+    }
+</script>
+
+</body>
+</html>

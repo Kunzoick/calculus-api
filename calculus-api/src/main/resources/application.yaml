@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: calculus-api
+
+server:
+  port: ${PORT:8080}
