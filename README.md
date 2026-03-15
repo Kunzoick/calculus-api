@@ -196,6 +196,9 @@ Includes regression tests for power rule and basic differentiation to confirm ne
 
 **Definite integral fails if the antiderivative is unevaluated.** Symbolic antiderivative is computed first — if that fails, the definite integral cannot be evaluated.
 
----
+---## Further Reading
+
+- [Architecture Decision Document](calculus-api/docs/Calculus_API_Architecture_Document.docx) — full architectural reasoning and every design decision
+
 
 *Calculus API · v2.0 · Kunzoick*
