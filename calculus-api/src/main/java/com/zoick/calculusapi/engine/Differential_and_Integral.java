@@ -108,7 +108,7 @@ public class Differential_and_Integral {
     }
 
     private static final Pattern NUM = Pattern.compile("^[0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?$");
-    private static final Set<String> FUNCTIONS = Set.of("sin", "cos", "tan", "ln", "exp", "sqrt", "sec", "csc", "cot");
+    private static final Set<String> FUNCTIONS = Set.of("sin", "cos", "tan", "ln", "exp", "sqrt", "sec", "csc", "cot", "arcsin", "arccos", "arctan");
     private static final Set<String> CONSTANTS = Set.of("e", "pi");
 
     private static List<Token> tokenize(String s) {
@@ -443,6 +443,22 @@ public class Differential_and_Integral {
                     if (inner instanceof Num n && n.v == 0) return new Num(0);
                     return new Mul(new Mul(new Num(c), new Pow(p.base, new Num(c - 1))), inner);
                 }
+                // Case 2 — constant base, variable exponent: 2^x → 2^x * ln(2)
+                if(!containsX(p.base) && containsX(p.exp)){
+                    Expr du= diff(p.exp);
+                    return new Mul(new Mul(p, new Func("ln", p.base)), du);
+                }
+                // Case 3 — both base and exponent depend on x: x^x → x^x * (ln(x) + 1)
+                // Uses logarithmic differentiation: d/dx(f^g) = f^g * (g'*ln(f) + g*(f'/f))
+                if(containsX(p.base) && containsX(p.exp)){
+                    Expr f= p.base;
+                    Expr g= p.exp;
+                    Expr fp= diff(f);
+                    Expr gp= diff(g);
+                    Expr term1= new Mul(gp, new Func("ln", f));
+                    Expr term2= new Mul(g, new Div(fp, f));
+                    return new Mul(p, new Add(term1, term2));
+                }
                 throw new IllegalArgumentException("Unsupported: exponent depends on x");
             }
             if (e instanceof Func f) {
@@ -476,10 +492,30 @@ public class Differential_and_Integral {
                     case "sqrt" -> {
                         return new Mul(new Div(new Num(0.5), new Pow(u, new Num(0.5))), du);
                     }
+                    case "arcsin" -> {
+                        return new Div(du, new Func("sqrt", new Sub(new Num(1), new Pow(u, new Num(2)))));
+                    }
+                    case "arccos" -> {
+                        return new Neg(new Div(du, new Func("sqrt", new Sub(new Num(1), new Pow(u, new Num(2))))));
+                    }
+                    case "arctan" -> {
+                        return new Div(du, new Add(new Num(1), new Pow(u, new Num(2))));
+                    }
                     default -> throw new IllegalArgumentException("Unsupported function: " + f.name);
                 }
             }
             throw new IllegalArgumentException("Unsupported expression form: " + e.getClass().getSimpleName());
+        }
+        private static boolean containsX(Expr e){
+            if (e instanceof Var v) return "x".equals(v.name);
+            if (e instanceof Add a) return containsX(a.a) || containsX(a.b);
+            if (e instanceof Sub s) return containsX(s.a) || containsX(s.b);
+            if (e instanceof Mul m) return containsX(m.a) || containsX(m.b);
+            if (e instanceof Div d) return containsX(d.a) || containsX(d.b);
+            if (e instanceof Pow p) return containsX(p.base) || containsX(p.exp);
+            if (e instanceof Neg n) return containsX(n.e);
+            if (e instanceof Func f) return containsX(f.arg);
+            return false;
         }
 
         static Expr diff(Expr e, int order) {
@@ -507,8 +543,84 @@ public class Differential_and_Integral {
                     powPart = m.b; expPart = m.a;
                 }
                 if (powPart instanceof Pow pow && pow.exp instanceof Num ne) {
+                    // x^n * e^x
+                    if(expPart instanceof Func fb && "exp".equals(fb.name)){
                     return integrateByPartsXnExpX((int) ne.v);
+                    }
                 }
+                // x^n * sin(x)
+                if (m.a instanceof Pow pa && pa.base instanceof Var va && "x".equals(va.name)
+                        && pa.exp instanceof Num ne && m.b instanceof Func fb && "sin".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnSinX((int) ne.v);
+                }
+                if (m.b instanceof Pow pa && pa.base instanceof Var va && "x".equals(va.name)
+                        && pa.exp instanceof Num ne && m.a instanceof Func fb && "sin".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnSinX((int) ne.v);
+                }
+                // x * sin(x) — base case where power is just x (Var), not x^n (Pow)
+                if (m.a instanceof Var va && "x".equals(va.name)
+                        && m.b instanceof Func fb && "sin".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnSinX(1);
+                }
+                if (m.b instanceof Var va && "x".equals(va.name)
+                        && m.a instanceof Func fb && "sin".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnSinX(1);
+                }
+                // x * cos(x) — base case
+                if (m.a instanceof Var va && "x".equals(va.name)
+                        && m.b instanceof Func fb && "cos".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnCosX(1);
+                }
+                if (m.b instanceof Var va && "x".equals(va.name)
+                        && m.a instanceof Func fb && "cos".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnCosX(1);
+                }
+                // x * exp(x) — base case
+                if (m.a instanceof Var va && "x".equals(va.name)
+                        && m.b instanceof Func fb && "exp".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnExpX(1);
+                }
+                if (m.b instanceof Var va && "x".equals(va.name)
+                        && m.a instanceof Func fb && "exp".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return integrateByPartsXnExpX(1);
+                }
+                // x^n * cos(x)
+                if (m.a instanceof Pow pa2 && pa2.base instanceof Var va2 && "x".equals(va2.name)
+                        && pa2.exp instanceof Num ne2 && m.b instanceof Func fb2 && "cos".equals(fb2.name)
+                        && fb2.arg instanceof Var vb2 && "x".equals(vb2.name)) {
+                    return integrateByPartsXnCosX((int) ne2.v);
+                }
+                if (m.b instanceof Pow pa2 && pa2.base instanceof Var va2 && "x".equals(va2.name)
+                        && pa2.exp instanceof Num ne2 && m.a instanceof Func fb2 && "cos".equals(fb2.name)
+                        && fb2.arg instanceof Var vb2 && "x".equals(vb2.name)) {
+                    return integrateByPartsXnCosX((int) ne2.v);
+                }
+                // x * ln(x) → (x^2/2)*ln(x) - x^2/4
+                if (m.a instanceof Var va && "x".equals(va.name)
+                        && m.b instanceof Func fb && "ln".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return new Sub(
+                            new Mul(new Div(new Pow(new Var("x"), new Num(2)), new Num(2)), new Func("ln", new Var("x"))),
+                            new Div(new Pow(new Var("x"), new Num(2)), new Num(4))
+                    );
+                }
+                if (m.b instanceof Var va && "x".equals(va.name)
+                        && m.a instanceof Func fb && "ln".equals(fb.name)
+                        && fb.arg instanceof Var vb && "x".equals(vb.name)) {
+                    return new Sub(
+                            new Mul(new Div(new Pow(new Var("x"), new Num(2)), new Num(2)), new Func("ln", new Var("x"))),
+                            new Div(new Pow(new Var("x"), new Num(2)), new Num(4))
+                    );
+                }
+
                 Expr constPart = null, varPart = null;
                 if (m.a instanceof Num || Differentiator.diff(m.a) instanceof Num nd && nd.v == 0) {
                     constPart = m.a; varPart = m.b;
@@ -668,6 +780,26 @@ public class Differential_and_Integral {
             Expr u = new Pow(new Var("x"), new Num(n));
             Expr v = new Func("exp", new Var("x"));
             return new Sub(new Mul(u, v), new Mul(new Num(n), integrateByPartsXnExpX(n - 1)));
+        }
+        // ∫x^n * sin(x) dx — recursive integration by parts
+        private static Expr integrateByPartsXnSinX(int n) {
+            if (n == 0) return new Neg(new Func("cos", new Var("x"))); // ∫sin(x)dx = -cos(x)
+            Expr u = new Pow(new Var("x"), new Num(n));
+            Expr v = new Neg(new Func("cos", new Var("x")));           // v = -cos(x)
+            Expr uv = new Mul(u, v);                                   // uv = x^n * (-cos(x))
+            // ∫v du = ∫-cos(x) * n*x^(n-1) dx = -n * ∫x^(n-1)*cos(x)dx
+            Expr integVdu = new Mul(new Num(n), integrateByPartsXnCosX(n - 1));
+            return new Sub(uv, new Neg(integVdu)); // uv - ∫v du
+        }
+        // ∫x^n * cos(x) dx — recursive integration by parts
+        private static Expr integrateByPartsXnCosX(int n) {
+            if (n == 0) return new Func("sin", new Var("x")); // ∫cos(x)dx = sin(x)
+            Expr u = new Pow(new Var("x"), new Num(n));
+            Expr v = new Func("sin", new Var("x"));            // v = sin(x)
+            Expr uv = new Mul(u, v);                           // uv = x^n * sin(x)
+            // ∫v du = ∫sin(x) * n*x^(n-1) dx = n * ∫x^(n-1)*sin(x)dx
+            Expr integVdu = new Mul(new Num(n), integrateByPartsXnSinX(n - 1));
+            return new Sub(uv, integVdu); // uv - ∫v du
         }
     }
 
@@ -902,6 +1034,7 @@ public class Differential_and_Integral {
                 case "cot"    -> { return 1 / Math.tan(arg); }
                 case "arctan" -> { return Math.atan(arg); }
                 case "arcsin" -> { return Math.asin(arg); }
+                case "arccos" -> { return Math.acos(arg); }
                 default -> throw new UnsupportedOperationException("Unsupported function: " + f.name);
             }
         }
